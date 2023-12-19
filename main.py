@@ -94,7 +94,8 @@ else:
         # Argument names to use as an x-axis for the plot
         x_names=['M', 'N', 'K', 'NUM_BLOCKS'],
         # Different possible values for `x_name`
-        x_vals=[(8192, 8192, 256, 1), (8192, 8192, 256, 2), (8192, 8192, 256, 4), (8192, 8192, 256, 8)],
+        x_vals=[(8192, 8192, 256, 1), (8192, 8192, 256, 2),
+                (8192, 8192, 256, 4), (8192, 8192, 256, 8)],
         # Argument name whose value corresponds to a different line in the plot
         line_arg='provider',
         # Possible values for `line_arg`
