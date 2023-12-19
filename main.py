@@ -53,7 +53,7 @@ def matmul_kernel(
         pid_m += 1
 
 
-def matmul(a, b, activation=""):
+def matmul(a, b, num_blocks=2):
     # Check constraints.
     assert a.shape[1] == b.shape[0], "Incompatible dimensions"
     assert a.is_contiguous(), "Matrix A must be contiguous"
@@ -63,16 +63,15 @@ def matmul(a, b, activation=""):
     # Allocates output.
     c = torch.empty((M, N), device=a.device, dtype=a.dtype)
     # 1D launch kernel where each block gets its own program.
-    NUM_BLOCKS = 4
     def grid(META): return (triton.cdiv(triton.cdiv(
-        M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), NUM_BLOCKS), )
+        M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), num_blocks), )
     matmul_kernel[grid](
         a, b, c,  #
         M, N, K,  #
         a.stride(0), a.stride(1),  #
         b.stride(0), b.stride(1),  #
         c.stride(0), c.stride(1),  #
-        NUM_BLOCKS,
+        num_blocks,
     )
     return c
 
@@ -93,9 +92,9 @@ else:
 @triton.testing.perf_report(
     triton.testing.Benchmark(
         # Argument names to use as an x-axis for the plot
-        x_names=['M', 'N', 'K'],
+        x_names=['M', 'N', 'K', 'NUM_BLOCKS'],
         # Different possible values for `x_name`
-        x_vals=[(8192, 8192, 256,)],
+        x_vals=[(8192, 8192, 256, 1), (8192, 8192, 256, 2), (8192, 8192, 256, 4), (8192, 8192, 256, 8)],
         # Argument name whose value corresponds to a different line in the plot
         line_arg='provider',
         # Possible values for `line_arg`
@@ -109,13 +108,13 @@ else:
         plot_name="matmul-performance",
         args={},
     ))
-def benchmark(M, N, K, provider):
+def benchmark(M, N, K, NUM_BLOCKS, provider):
     a = torch.randn((M, K), device='cuda', dtype=torch.float16)
     b = torch.randn((K, N), device='cuda', dtype=torch.float16)
     quantiles = [0.5, 0.2, 0.8]
     if provider == 'cublas':
         ms, min_ms, max_ms = triton.testing.do_bench(
-            lambda: torch.matmul(a, b), quantiles=quantiles)
+            lambda: torch.matmul(a, b, NUM_BLOCKS), quantiles=quantiles)
     if provider == 'triton':
         ms, min_ms, max_ms = triton.testing.do_bench(
             lambda: matmul(a, b), quantiles=quantiles)
