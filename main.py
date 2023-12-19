@@ -23,7 +23,7 @@ def matmul_kernel(
 ):
     pid = tl.program_id(axis=0)
     num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
-    pid_m = pid // num_pid_n
+    pid_m = pid // num_pid_n * NUM_BLOCKS
     pid_n = pid % num_pid_n
 
     for _ in tl.static_range(0, NUM_BLOCKS):
