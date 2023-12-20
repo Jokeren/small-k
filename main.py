@@ -22,8 +22,9 @@ def matmul_kernel(
         BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr, BLOCK_SIZE_K: tl.constexpr,  #
 ):
     pid = tl.program_id(axis=0)
+    num_programs = tl.num_programs(axis=0)
     num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
-    pid_m = pid // num_pid_n * NUM_BLOCKS
+    pid_m = pid // num_pid_n
     pid_n = pid % num_pid_n
 
     for _ in tl.static_range(0, NUM_BLOCKS):
@@ -44,13 +45,15 @@ def matmul_kernel(
             b_ptrs += BLOCK_SIZE_K * stride_bk
         c = accumulator.to(tl.float16)
 
+        pid += num_programs
         offs_cm = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
         offs_cn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
+        pid_m = pid // num_pid_n
+        pid_n = pid % num_pid_n
         c_ptrs = c_ptr + stride_cm * \
             offs_cm[:, None] + stride_cn * offs_cn[None, :]
         c_mask = (offs_cm[:, None] < M) & (offs_cn[None, :] < N)
         tl.store(c_ptrs, c, mask=c_mask)
-        pid_m += 1
 
 
 def matmul(a, b, num_blocks=2):
