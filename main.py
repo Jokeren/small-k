@@ -115,6 +115,8 @@ else:
 def benchmark(M, N, K, NUM_BLOCKS, provider):
     a = torch.randn((M, K), device='cuda', dtype=torch.float16)
     b = torch.randn((K, N), device='cuda', dtype=torch.float16)
+    stream = torch.cuda.Stream()
+    torch.cuda.set_stream(stream)
     if provider == 'cublas':
         ms = triton.testing.do_bench_cudagraph(
             lambda: torch.matmul(a, b))
